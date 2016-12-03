@@ -1,0 +1,37 @@
+#!/bin/bash
+
+OPS_BASE=${OPS_BASE:-$HOME/bin}
+OPS_INCL_D=${OPS_INCL_D:-ops-fw.d}
+source $OPS_BASE/.env && SCRIPT=$(realpathx $0) && CD=$(dirname $SCRIPT) && DEBUG "'$SCRIPT' in '$CD', \$0='$0','$1'." #echo "SCRIPT=$SCRIPT, MY_DIR=$CD"
+
+
+DEBUG "realpathx test: '$0' => '$(realpathx $0)'"
+DEBUG "CD = $CD"
+#SCRIPT=$(realpathx $0) && (DEBUG "return $? and ok") || (DEBUG "return $? and fail")
+#CD=$(dirname $SCRIPT)
+#DEBUG "\$SCRIPT=$SCRIPT"
+#DEBUG "CD = $CD"
+
+
+
+[[ $OSTYPE == *linux* ]] && {
+	DEBUG 'Linux'
+	DEBUG "Cool"
+	DEBUG "$OSTYPE"
+} || DEBUG 'Unknown OS (non-Linux)'
+
+if_centos && DEBUG "IN centos" || DEBUG "not centos"
+
+
+_ops_load_functions () {
+  [ -d $CD/$OPS_INCL_D/ ] && {
+    for f in $CD/$OPS_INCL_D/*.sh; do
+      . $f && DEBUG "    ..sourcing $f ok" || DEBUG "    ..sourcing $f FAILED!!"
+    done
+  }
+}
+
+[ $# -eq 0 ] && ii || {
+  _ops_load_functions
+  cmd=$1; shift; $cmd $*
+}

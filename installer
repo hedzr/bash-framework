@@ -1,0 +1,62 @@
+#!/bin/bash
+
+#
+# curl -sSL https://hedzr.com/bash-framwork/installer | sudo bash -si
+# curl -sSL https://hedzr.com/bash-framwork/installer | sudo bash -s
+#
+#
+#
+#
+#
+#
+#
+
+
+echo "Install....$0 $@"
+URL_BASE=https://hedzr.com/bash-framework/
+INSTALL_PREFIX=${INSTALL_TARGET:-/usr/local/bin}
+INSTALL_NAME=${INSTALL_NAME:-ops-fw}
+INSTALL_TARGET="$INSTALL_PREFIX"
+
+
+
+self-download () {
+	if [ -z $# ]; then
+		false
+	elif [ $# -gt 1 ]; then
+		echo "try"
+		for file in $*; do
+			self-download $file
+		done
+	else
+		local context=$1
+		local cdir=$(dirname $context)
+		local cname=$(basename $context)
+		if [[ $context != */* ]]; then
+			cdir="./"
+			cname=$context
+		fi
+		echo "Downloading $context...    dir: $cdir, name: $cname, @: $INSTALL_TARGET"
+		[ ! -d $INSTALL_TARGET/$cdir ] && mkdir -p $INSTALL_TARGET/$cdir
+		#curl -sSL https://ops.suweia.net/suwei-init/$context -o $INSTALL_TARGET/$cdir/$cname
+		wget -mcr -np -nH $URL_BASE/$context -O $INSTALL_TARGET/$cdir/$cname
+	fi
+}
+
+_ops_add_path () {
+	false
+}
+
+
+w
+self-download suwei-init
+for f in $INSTALL_NAME/.env \
+		$INSTALL_NAME/ops-fw.d/01.install.sh \
+		$INSTALL_NAME/ops-fw.d/00.init.sh 
+		# $INSTALL_NAME/ops-fw.d/
+do
+	self-download $f
+done
+
+
+
