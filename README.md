@@ -31,9 +31,26 @@ bash-framework usage
 ```bash
 mkdir my-work && cd -
 cp -R /usr/local/bin/ops-fw/* ./
-cp  `/usr/local/bin/bash-framework ./my-ops
+cp /usr/local/bin/bash-framework ./my-ops
 ```
 
 也可以直接 `git clone https://ggithub.com/hedzr/bash-framework/` 后开始你的自定义工作。
+
+
+## 适合于谁？
+
+`Bash Framework` 适合于要开发大量shell脚本的编程人员，我们提供了一个基本的命令组织结构，以及安装和分发模型，你可以在此基础上展开自己的业务逻辑开发，并在任一服务器上快速分发你的脚本集合。
+
+## 缘由
+
+`Bash Framework` 基于作者历年来经验进行了提炼，希望能帮助到 ops/devops 工具作者或者其他人。
+
+## LICENSE
+
+MIT
+
+## AUTHOR
+
+Hedzr
 
 
