@@ -34,7 +34,7 @@ cp -R /usr/local/bin/ops-fw/* ./
 cp /usr/local/bin/bash-framework ./my-ops
 ```
 
-也可以直接 `git clone https://ggithub.com/hedzr/bash-framework/` 后开始你的自定义工作。
+也可以直接 `git clone https://github.com/hedzr/bash-framework/` 后开始你的自定义工作。
 
 
 ## 适合于谁？
