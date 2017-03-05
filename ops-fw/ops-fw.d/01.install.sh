@@ -1,43 +1,64 @@
 #!/bin/bash
 
+commander () {
+  local cmd=${1:-usage}; [ $# -eq 0 ] || shift;
+  local self=${FUNCNAME[0]}
+  case $cmd in
+    help|usage|--help|-h|-H) "$self-usage" "$@"; ;;
+    *) "$self-$cmd" "$@"; ;;
+  esac
+}
 
-install () {
-	local subcmd=$1; shift
-	case $subcmd in
-		self) install-self $*; ;;
-		*)    install-$subcmd $*; ;;
-	esac
+install () { commander "$@";}
+install-usage () {
+	cat <<EOF
+Usage: $0 $self <sub-command> [...]
+Sub-commands:
+  self                   upgrade ME (bash-framework)
+  self-as-root
+  self-to-current-user
+  bash-auto-completion   enable bash auto-completion supports for $OPS_NAME toolset
+
+EOF
 }
-config () {
-	local subcmd=$1; shift
-	case $subcmd in
-		self) config-self $*; ;;
-		*)    config-$subcmd $*; ;;
-	esac
+
+config () { commander "$@";}
+config-usage () {
+	cat <<EOF
+Usage: $0 $self <sub-command> [...]
+Sub-commands:
+  grep [string]          find out the processes
+
+EOF
 }
-tune () {
-	local subcmd=$1; shift
-	case $subcmd in
-		self) tune-self $*; ;;
-		*)    tune-$subcmd $*; ;;
-	esac
+
+tune () { commander "$@";}
+tune-usage () {
+	cat <<EOF
+Usage: $0 $self <sub-command> [...]
+Sub-commands:
+  grep [string]          find out the processes
+
+EOF
 }
+
+
 
 install-self () {
-	install-self-to-current-user $*
-	install-self-as-root $*
+	install-self-to-current-user "$@"
+	install-self-as-root "$@"
 }
 
 install-self-to-current-user () {
-	local TGT=$HOME/$(basename $CD)
-	sudo test -d $TGT || sudo mkdir -p $TGT
-	local brc=$HOME/.bashrc
-	append-ops-env $brc
+	local TGT="$HOME/$(basename $CD)"
+	sudo test -d "$TGT" || sudo mkdir -p "$TGT"
+	local brc="$HOME/.bashrc"
+	append-ops-env "$brc" "$1"
 }
 
 install-self-as-root () {
-	local TGT=/root/$(basename $CD)
-	sudo test -d $TGT || sudo mkdir -p $TGT
+	local TGT="/root/$(basename $CD)"
+	sudo test -d "$TGT" || sudo mkdir -p "$TGT"
 
 	echo "Setting up the target : $TGT"
 	for f in $CD/* $CD/.[!.]*; do
@@ -52,23 +73,112 @@ install-self-as-root () {
 }
 
 
+install-bash-auto-completion () {
+	if [ -f /etc/bash_completion.d/ops_ac ]; then
+		install-bash-auto-completion-impl
+	else
+		install-bash-auto-completion-impl
+	fi
+}
+
+install-bash-auto-completion-impl () {
+	cat >/etc/bash_completion.d/ops_ac <<EOC
+
+shopt -s progcomp
+
+_upstart_cmd_help_events () {
+  $OPS_HOME_CMD \$1 help|grep "^  [^ \\\$\\#\\!/\\\\@\\"']"|awk '{print \$1}'
+}
+
+# _is_ubuntu () {
+#   [ -f /etc/os-release ] && grep -i 'ubuntu' /etc/os-release >/dev/null
+# }
+
+_upstart_cmd () {
+  #cmd=ops
+
+  local cur prev sysvdir services options
+
+  if [[ \$(type -t _get_comp_words_by_ref) == function ]]; then
+    _get_comp_words_by_ref cur prev
+  else
+    cur=`_get_cword`
+    prev=\${COMP_WORDS[COMP_CWORD-1]}
+  fi
+
+  # if [[ \$OSTYPE == *linux* ]]; then
+  #   if _is_ubuntu; then
+  #     cur=`_get_cword`
+  #     prev=\${COMP_WORDS[COMP_CWORD-1]}
+  #   else
+  #     _get_comp_words_by_ref cur prev
+  #   fi
+  # else
+  #   false
+  # fi
+  # echo "ops: '$cur' '$prev' --- " >> /tmp/1
+
+  COMPREPLY=()
+
+  case "\$prev" in
+    --help|--version|usage|help)
+      COMPREPLY=()
+      return 0
+      ;;
+  esac
+
+  #opts="--help --version -q --quiet -v --verbose --system --dest="
+  #opts="--help upgrade version deploy undeploy log ls ps start stop restart"
+  opts="--help"
+  #cmds=\$(ops help|grep "^  [^ \\\\$\\#\\!\/\\\\@\\"']"|awk '{print \$1}')
+  cmds="\$(_upstart_cmd_help_events \$prev)"
+
+  COMPREPLY=( \$(compgen -W "\${opts} \${cmds}" -- \${cur}) )
+
+} && complete -F _upstart_cmd ops
+#complete -F _bzr_lazy -o default bzr
+
+EOC
+
+	cat <<EOF
+
+Installed.
+Re-login the current shell session to bring '$OPS_NAME' auto-completion feature up.
+Type '$OPS_NAME<TAB><TAB>', ...
+Enjoy it!
+
+EOF
+}
+
+
 make-sshd-keepalive () {
 	local ss=/etc/ssh/sshd_config
 	local flag=1
-	grep -P "^ClientAliveInterval" $ss && echo "ClientAliveCountMax ok, in $ss." || {
-		grep -P "^#+ClientAliveInterval" $ss && \
-		sudo perl -0777 -i.original -pe 's/^#+ClientAliveInterval.*$/ClientAliveInterval 60/igsm' $ss || \
-		echo "ClientAliveInterval 60" | sudo tee -a $ss
+	if grep -P "^ClientAliveInterval" $ss; then
+	  echo "ClientAliveCountMax ok, in $ss."
+	else
+		if grep -P "^#+ClientAliveInterval" $ss; then
+			sudo perl -0777 -i.original -pe 's/^#+ClientAliveInterval.*$/ClientAliveInterval 60/igsm' $ss
+		else
+			echo "ClientAliveInterval 60" | sudo tee -a $ss
+		fi
 		flag=0
-	}
-	grep -P "^ClientAliveInterval [^6]" $ss && flag=0 && sudo sed -i -r 's/^ClientAliveInterval.*$/ClientAliveInterval 60/i' $ss
+	fi
+	if grep -P "^ClientAliveInterval [^6]" $ss; then
+		flag=0
+		sudo sed -i -r 's/^ClientAliveInterval.*$/ClientAliveInterval 60/i' $ss
+	fi
 
-	grep -P "^ClientAliveCountMax" $ss && echo "ClientAliveCountMax ok, in $ss." || {
-		grep -P "^#+ClientAliveCountMax" $ss && \
-		sudo perl -0777 -i.original -pe 's/^#+ClientAliveCountMax.*$/ClientAliveCountMax 6/igsm' $ss || \
-		echo "ClientAliveCountMax 6" | sudo tee -a $ss
+	if grep -P "^ClientAliveCountMax" $ss; then
+		echo "ClientAliveCountMax ok, in $ss."
+	else
+		if grep -P "^#+ClientAliveCountMax" $ss; then
+			sudo perl -0777 -i.original -pe 's/^#+ClientAliveCountMax.*$/ClientAliveCountMax 6/igsm' $ss
+		else
+			echo "ClientAliveCountMax 6" | sudo tee -a $ss
+		fi
 		flag=0
-	}
+	fi
 	grep -P "^ClientAliveCountMax [^6]" $ss && flag=0 && sudo sed -i -r 's/^ClientAliveCountMax.*$/ClientAliveCountMax 6/i' $ss
 
 	[ -z $flag ] && sudo service sshd restart
@@ -102,13 +212,34 @@ setup-pm () {
 	}
 }
 
-append-ops-env () {
+append-ops-env-old () {
 	local brc=${1:-/root/.bashrc}; shift
 	sudo grep -P '^\[ -f "\$HOME\/bin\/\.env" \]' $brc && {
 		sudo perl -0777 -i.original -pe 's/^\[ -f "\$HOME\/bin\/\.env" \]$/\[ -f "\$HOME\/bin\/\.env" \] && export OPS_BASE=\$HOME\/bin && PATH=\$OPS_BASE:\$PATH && \. \$OPS_BASE\/\.env && at_login/igsm' $brc
 	} || {
 		echo '[ -f "$HOME/bin/.env" ] && export OPS_BASE=$HOME/bin && PATH=$OPS_BASE:$PATH && . $OPS_BASE/.env && at_login' | sudo tee -a $brc;
 	}
+}
+
+append-ops-env () {
+	local brc=${1:-/root/.bashrc}; shift
+	local IN=${2:-ops-fw}
+	if sudo grep -P "^\[ -f \\\"\/usr\/local\/bin\/$IN\/\.env\\\" \]" $brc; then
+		sudo perl -0777 -i.original -pe 's/^\[ -f "\/usr\/local\/bin\/ops\-fw\/\.env" \][^\n]*$/\[ -f "\/usr\/local\/bin\/ops\-fw\/\.env" \] && export OPS_BASE=\/usr\/local\/bin\/ops\-fw && \. \$OPS_BASE\/\.env && at_login/igsm' $brc
+	else
+		echo -e "[ -f \"/usr/local/bin/$IN/.env\" ] && export OPS_BASE=/usr/local/bin/$IN && . \$OPS_BASE/.env && at_login\nPATH=/usr/local/bin:\$PATH\n" | sudo tee -a $brc;
+	fi
+	
+	local prc=$(dirname $brc) pf;
+	if [ -f $prc/.profile ]; then pf=$prc/.profile; else pf=$prc/.bash_profile; fi
+	
+	DEBUG "Modifying $pf..."
+	if sudo grep -P '^\. \$OPS_BASE/\.alias' $pf; then
+		#sudo perl -0777 -i.original -pe 's/^\. \$OPS_BASE/\.alias$/\. \$OPS_BASE/\.alias/igsm' $pf
+		:
+	else
+		echo '. $OPS_BASE/.alias' | sudo tee -a $pf;
+	fi
 }
 
 

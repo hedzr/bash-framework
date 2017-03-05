@@ -2,6 +2,8 @@
 
 OPS_BASE=${OPS_BASE:-$HOME/bin}
 OPS_INCL_D=${OPS_INCL_D:-ops-fw.d}
+OPS_NAME="bash-framwork"
+INSTALL_NAME="${INSTALL_NAME:-ops-fw}"
 source $OPS_BASE/.env && SCRIPT=$(realpathx $0) && CD=$(dirname $SCRIPT) && DEBUG "'$SCRIPT' in '$CD', \$0='$0','$1'." #echo "SCRIPT=$SCRIPT, MY_DIR=$CD"
 
 
@@ -14,24 +16,75 @@ DEBUG "CD = $CD"
 
 
 
-[[ $OSTYPE == *linux* ]] && {
-	DEBUG 'Linux'
-	DEBUG "Cool"
-	DEBUG "$OSTYPE"
-} || DEBUG 'Unknown OS (non-Linux)'
-
-if_centos && DEBUG "IN centos" || DEBUG "not centos"
+# [[ $OSTYPE == *linux* ]] && {
+# 	DEBUG 'Linux'
+# 	DEBUG "Cool"
+# 	DEBUG "$OSTYPE"
+# } || DEBUG 'Unknown OS (non-Linux)'
+#
+# if_centos && DEBUG "IN centos" || DEBUG "not centos"
 
 
 _ops_load_functions () {
   [ -d $CD/$OPS_INCL_D/ ] && {
     for f in $CD/$OPS_INCL_D/*.sh; do
-      . $f && DEBUG "    ..sourcing $f ok" || DEBUG "    ..sourcing $f FAILED!!"
+      if . "$f"; then DEBUG "    ..sourcing $f ok"; else DEBUG "    ..sourcing $f FAILED!!"; fi
     done
   }
 }
 
-[ $# -eq 0 ] && ii || {
-  _ops_load_functions
-  cmd=$1; shift; $cmd $*
+function script.functions () {
+  # http://stackoverflow.com/questions/2630812/get-a-list-of-function-names-in-a-shell-script
+  # shellcheck disable=SC2155
+  local fncs=$(declare -F -p | cut -d " " -f 3); # Get function list
+  echo "$fncs"; # not quoted here to create shell "argument list" of funcs.
 }
+
+# [ $# -eq 0 ] && ii || {
+#   _ops_load_functions
+#   cmd=$1; shift; $cmd $*
+# }
+
+if [ $# -eq 0 ]; then
+  ii
+else
+  _ops_load_functions
+  declare MyFuncs=($(script.functions));
+  cmd=$1; shift;
+  help-usage () {
+		cat <<-EOF
+		Usage: $0 <command> [<sub-command>] [...]
+		Command:
+		  install       install software package
+		  config        configure it
+		  tune          tune it
+		  
+		  version [-r]  print "$OPS_NAME" toolset version (or the Remote version released)
+		  upgrade       upgrade "$OPS_NAME" toolset
+		  help          print this screen
+
+		More:
+		  ${MyFuncs[@]}
+
+		EOF
+  }
+  case $cmd in
+    self-update|selfupdate|upgrade)
+      curl -sSL https://hedzr.com/bash-framework/installer | sudo bash -s
+      ;;
+    version)
+      if [ "$1" == "-r" ]; then
+         curl  -sSL "https://hedzr.com/bash-framework/$INSTALL_NAME/VERSION"|head -1
+       else
+         head -1 < "$CD/$INSTALL_NAME"/VERSION
+       fi
+      ;;
+    #ps)       ps-entry "$@"; ;;
+    #puppet)   puppet-entry "$@"; ;;
+    #consul)   consul-entry "$@"; ;;
+    #ls|deploy|log|undeploy)   ms "$cmd" "$@"; ;;
+    #list) ms ls "$@"; ;;
+    help|usage|--help|-h|-H) help-usage "$@"; ;;
+    *)        $cmd "$@"; ;;
+  esac
+fi

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #
-# curl -sSL https://hedzr.com/bash-framwork/installer | sudo bash -si
-# curl -sSL https://hedzr.com/bash-framwork/installer | sudo bash -s
+# curl -sSL https://hedzr.com/bash-framework/installer | sudo bash -si
+# curl -sSL https://hedzr.com/bash-framework/installer | sudo bash -s
 #
 #
 #
@@ -10,23 +10,26 @@
 #
 #
 #
-
+#set -e
+#set -x
 
 echo "Install....$0 $@"
-URL_BASE=https://hedzr.com/bash-framework/
-INSTALL_PREFIX=${INSTALL_TARGET:-/usr/local/bin}
-INSTALL_NAME=${INSTALL_NAME:-ops-fw}
+OPS_NAME="${OPS_NAME:-bash-framework}"
+OPS_HOME_CMD="${OPS_HOME_CMD:-ops}"
+URL_BASE="${OPS_URL_BASE:-https://hedzr.com/$OPS_NAME/}"
+INSTALL_PREFIX="${INSTALL_TARGET:-/usr/local/bin}"
+INSTALL_NAME="${INSTALL_NAME:-ops-fw}"
 INSTALL_TARGET="$INSTALL_PREFIX"
 
 
 
-self-download () {
+function self_download () {
 	if [ -z $# ]; then
 		false
 	elif [ $# -gt 1 ]; then
 		echo "try"
 		for file in $*; do
-			self-download $file
+			self_download $file
 		done
 	else
 		local context=$1
@@ -36,10 +39,10 @@ self-download () {
 			cdir="./"
 			cname=$context
 		fi
-		echo "Downloading $context...    dir: $cdir, name: $cname, @: $INSTALL_TARGET"
+		echo "#### Downloading $context...    dir: $cdir, name: $cname, @: $INSTALL_TARGET, PWD: $PWD"
 		[ ! -d $INSTALL_TARGET/$cdir ] && mkdir -p $INSTALL_TARGET/$cdir
 		#curl -sSL https://ops.suweia.net/suwei-init/$context -o $INSTALL_TARGET/$cdir/$cname
-		wget -mcr -np -nH $URL_BASE/$context -O $INSTALL_TARGET/$cdir/$cname
+		wget -q $URL_BASE/$context -O $INSTALL_TARGET/$cdir/$cname
 	fi
 }
 
@@ -48,15 +51,51 @@ _ops_add_path () {
 }
 
 
-w
-self-download suwei-init
-for f in $INSTALL_NAME/.env \
-		$INSTALL_NAME/ops-fw.d/01.install.sh \
-		$INSTALL_NAME/ops-fw.d/00.init.sh 
+
+self_download "$OPS_NAME";
+for f in "$INSTALL_NAME"/.env \
+		"$INSTALL_NAME"/ops-fw.d/10.common.sh \
+		"$INSTALL_NAME"/ops-fw.d/01.install.sh \
+		"$INSTALL_NAME"/ops-fw.d/00.init.sh \
+		"$INSTALL_NAME"/VERSION
 		# $INSTALL_NAME/ops-fw.d/
 do
-	self-download $f
+	self_download $f
 done
 
+[ -f "$INSTALL_TARGET/$OPS_HOME_CMD" ] && rm -f "$INSTALL_TARGET/$OPS_HOME_CMD"
+ln -s "$INSTALL_TARGET/$OPS_NAME" "$INSTALL_TARGET/$OPS_HOME_CMD"
+chmod a+x "$INSTALL_TARGET/$OPS_NAME" "$INSTALL_TARGET/$OPS_HOME_CMD"
+# shellcheck source=suwei-ops/suwei-init.d/01.install.sh
+# shellcheck disable=SC1091
+OPS_BASE="$INSTALL_TARGET/$INSTALL_NAME"
+source $OPS_BASE/.env && SCRIPT=$(realpathx $0) && CD=$(dirname $SCRIPT) && DEBUG "'$SCRIPT' in '$CD', \$0='$0','$1'." #echo "SCRIPT=$SCRIPT, MY_DIR=$CD"
+. "$INSTALL_TARGET/$INSTALL_NAME/ops-fw.d/01.install.sh"
+echo ""
+echo "#### Installing BASH Auto-completion supports"
+install-bash-auto-completion
+echo ""
+echo "#### Installing to current user shell environment"
+#set -x
+#append-ops-env $USER $INSTALL_NAME
+install-self-to-current-user $INSTALL_NAME
+
+echo ""
+echo ""
+w 2>/dev/null
+ls -l --color "$INSTALL_TARGET/$OPS_NAME"
+cat <<EOF
+
+====================================================================
+'$OPS_NAME' was installed, please re-login into terminal for them.
+
+1. update $OPS_NAME toolset, run:
+
+    $ curl -sSL $URL_BASE/installer | sudo bash -s
+
+
+All folks, Enjoy it!
+
+EOF
 
 
