@@ -59,13 +59,15 @@ else
 		  config        configure it
 		  tune          tune it
 		  
+		  user          manage linux accounts
+		  
 		  version [-r]  print "$OPS_NAME" toolset version (or the Remote version released)
 		  upgrade       upgrade "$OPS_NAME" toolset
 		  help          print this screen
-
+		
 		More:
 		  ${MyFuncs[@]}
-
+		
 		EOF
   }
   case $cmd in

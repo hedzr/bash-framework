@@ -1,14 +1,5 @@
 #!/bin/bash
 
-commander () {
-  local cmd=${1:-usage}; [ $# -eq 0 ] || shift;
-  local self=${FUNCNAME[0]}
-  case $cmd in
-    help|usage|--help|-h|-H) "$self-usage" "$@"; ;;
-    *) "$self-$cmd" "$@"; ;;
-  esac
-}
-
 install () { commander "$@";}
 install-usage () {
 	cat <<EOF
